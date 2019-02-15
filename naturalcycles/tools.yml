@@ -1,0 +1,136 @@
+#
+# circleci orb validate naturalcycles/tools.yml
+#
+# circleci orb publish naturalcycles/tools.yml naturalcycles/tools@dev:1
+# circleci orb publish increment naturalcycles/tools.yml naturalcycles/tools patch
+#
+version: 2.1
+description: Tools orb
+
+executors:
+  node:
+    docker:
+      - image: naturalcycles/ci-node:latest
+    resource_class: xlarge
+    working_directory: ~/repo
+
+jobs:
+  build-publish-lib-job:
+    executor: node
+    steps:
+      - checkout
+
+      # yarn
+      - install_yarn_deps_lib
+
+      # build
+      - run: yarn build-prod
+
+      # release
+      - release_lib
+
+  test-lib-job:
+    parameters:
+      CC_TEST_REPORTER_ID:
+        type: string
+        default: ""
+    executor: node
+    environment:
+      CC_TEST_REPORTER_ID: << parameters.CC_TEST_REPORTER_ID >>
+    steps:
+      - checkout
+
+      # yarn
+      - install_yarn_deps_lib
+
+      # build
+      - run: yarn build
+
+      # test
+      - test_ci
+
+      - store_test_artifacts
+
+  nightly-lib-job:
+    executor: node
+    steps:
+      - checkout
+
+      # yarn (no cache)
+      - run: yarn --pure-lockfile
+
+      - run: yarn build
+      - run: yarn test-ci
+
+      - run:
+          name: Report failure
+          when: on_fail
+          command: |
+            echo todo
+
+      - store_test_artifacts
+
+commands:
+  install_yarn_deps:
+    steps:
+      - restore_cache_yarn
+      - run: yarn --frozen-lockfile
+      - save_cache_yarn
+
+  install_yarn_deps_lib:
+    steps:
+      - restore_cache_yarn_lib
+      - run: yarn --pure-lockfile
+      - save_cache_yarn_lib
+
+  restore_cache_yarn:
+    steps:
+      - restore_cache:
+          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "yarn.lock" }}
+
+  save_cache_yarn:
+    steps:
+      - save_cache:
+          paths:
+            - node_modules
+          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "yarn.lock" }}
+
+  restore_cache_yarn_lib:
+    steps:
+      - restore_cache:
+          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "package.json" }}
+
+  save_cache_yarn_lib:
+    steps:
+      - save_cache:
+          paths:
+            - node_modules
+          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "package.json" }}
+
+  release_lib:
+    steps:
+      - run:
+          name: Release (if needed)
+          command: yarn release
+
+  test_ci:
+    steps:
+      - run:
+          name: Test
+          command: |
+            # Use `cc-test-reporter` only if env variable is set
+            [ ! -z "$CC_TEST_REPORTER_ID" ] && echo "Will use CC $CC_TEST_REPORTER_ID" || echo "Will NOT use CC $CC_TEST_REPORTER_ID"
+            [ -z "$CC_TEST_REPORTER_ID" ] || cc-test-reporter before-build
+            yarn test-ci
+            [ -z "$CC_TEST_REPORTER_ID" ] || cc-test-reporter after-build -t lcov ./coverage/lcov.info
+
+  store_test_artifacts:
+    steps:
+      - store_test_results:
+          path: report
+      - store_artifacts:
+          path: report
+          destination: report
+      - store_artifacts:
+          path: coverage/lcov-report
+          destination: coverage
