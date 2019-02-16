@@ -57,7 +57,7 @@ jobs:
       - checkout
 
       # yarn (no cache)
-      - run: yarn --pure-lockfile
+      - run: yarn --no-lockfile
 
       - run: yarn build
       - run: yarn test-ci
@@ -80,7 +80,7 @@ commands:
   install_yarn_deps_lib:
     steps:
       - restore_cache_yarn_lib
-      - run: yarn --pure-lockfile
+      - run: yarn --frozen-lockfile
       - save_cache_yarn_lib
 
   restore_cache_yarn:
@@ -98,14 +98,14 @@ commands:
   restore_cache_yarn_lib:
     steps:
       - restore_cache:
-          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "package.json" }}
+          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "yarn.lock" }}
 
   save_cache_yarn_lib:
     steps:
       - save_cache:
           paths:
             - node_modules
-          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "package.json" }}
+          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "yarn.lock" }}
 
   release_lib:
     steps:
