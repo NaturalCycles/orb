@@ -11,7 +11,13 @@ executors:
   node:
     docker:
       - image: naturalcycles/ci-node:latest
-    resource_class: xlarge
+#    resource_class: xlarge
+    working_directory: ~/repo
+
+  node-gcloud:
+    docker:
+      - image: naturalcycles/ci-node-gcloud:latest
+#    resource_class: xlarge
     working_directory: ~/repo
 
 jobs:
@@ -122,15 +128,18 @@ commands:
             [ ! -z "$CC_TEST_REPORTER_ID" ] && echo "Will use CC $CC_TEST_REPORTER_ID" || echo "Will NOT use CC $CC_TEST_REPORTER_ID"
             [ -z "$CC_TEST_REPORTER_ID" ] || cc-test-reporter before-build
             yarn test-ci
-            [ -z "$CC_TEST_REPORTER_ID" ] || cc-test-reporter after-build -t lcov ./coverage/lcov.info
+            [ -z "$CC_TEST_REPORTER_ID" ] || cc-test-reporter after-build -t lcov ./report/coverage/lcov.info
 
   store_test_artifacts:
     steps:
       - store_test_results:
-          path: report
+          path: report/jest
       - store_artifacts:
-          path: report
-          destination: report
+          path: report/jest
+          destination: jest
       - store_artifacts:
-          path: coverage/lcov-report
-          destination: coverage
+          path: report/coverage-unit/lcov-report
+          destination: coverage-unit
+      - store_artifacts:
+          path: report/coverage-integration/lcov-report
+          destination: coverage-integration
