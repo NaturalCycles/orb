@@ -128,7 +128,7 @@ commands:
             [ ! -z "$CC_TEST_REPORTER_ID" ] && echo "Will use CC $CC_TEST_REPORTER_ID" || echo "Will NOT use CC $CC_TEST_REPORTER_ID"
             [ -z "$CC_TEST_REPORTER_ID" ] || cc-test-reporter before-build
             yarn test-ci
-            [ -z "$CC_TEST_REPORTER_ID" ] || cc-test-reporter after-build -t lcov ./report/coverage-unit/lcov.info
+            [ -z "$CC_TEST_REPORTER_ID" ] || cc-test-reporter after-build -t lcov
 
   store_test_artifacts:
     steps:
@@ -138,7 +138,7 @@ commands:
           path: report/jest
           destination: jest
       - store_artifacts:
-          path: report/coverage-unit/lcov-report
+          path: coverage/lcov-report
           destination: coverage-unit
       - store_artifacts:
           path: report/coverage-integration/lcov-report
