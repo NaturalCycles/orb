@@ -11,13 +11,11 @@ executors:
   node:
     docker:
       - image: naturalcycles/ci-node:latest
-#    resource_class: xlarge
     working_directory: ~/repo
 
   node-gcloud:
     docker:
       - image: naturalcycles/ci-node-gcloud:latest
-#    resource_class: xlarge
     working_directory: ~/repo
 
 jobs:
@@ -75,6 +73,18 @@ jobs:
             echo todo
 
       - store_test_artifacts
+
+  release-job:
+    description: Runs `yarn release`
+    executor: node
+    steps:
+      - checkout
+
+      # yarn
+      - install_yarn_deps_lib
+
+      # release
+      - release_lib
 
 commands:
   install_yarn_deps:
