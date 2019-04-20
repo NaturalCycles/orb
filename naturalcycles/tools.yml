@@ -19,21 +19,60 @@ executors:
     working_directory: ~/repo
 
 jobs:
-  build-publish-lib-job:
+  build-job:
     executor: node
     steps:
       - checkout
 
       # yarn
-      - install_yarn_deps_lib
+      - install_yarn_deps
+
+      # build
+      - run: yarn build
+
+      # lint-all
+      - run: yarn lint-all --commitOnChanges
+      # todo: --commitOnChanges and --failOnChanges as boolean parameters
+
+  lint-job:
+    executor: node
+    steps:
+      - checkout
+
+      # yarn
+      - install_yarn_deps
+
+      # lint-all
+      - run: yarn lint-all --commitOnChanges
+      # todo: --commitOnChanges and --failOnChanges as boolean parameters
+
+  release-job:
+    description: Runs `yarn release`
+    executor: node
+    steps:
+      - checkout
+
+      # yarn
+      - install_yarn_deps
+
+      # release
+      - release
+
+  publish-job:
+    executor: node
+    steps:
+      - checkout
+
+      # yarn
+      - install_yarn_deps
 
       # build
       - run: yarn build-prod
 
       # release
-      - release_lib
+      - release
 
-  test-lib-job:
+  test-job:
     parameters:
       CC_TEST_REPORTER_ID:
         type: string
@@ -45,7 +84,7 @@ jobs:
       - checkout
 
       # yarn
-      - install_yarn_deps_lib
+      - install_yarn_deps
 
       # build
       - run: yarn build
@@ -55,7 +94,7 @@ jobs:
 
       - store_test_artifacts
 
-  nightly-lib-job:
+  nightly-job:
     executor: node
     steps:
       - checkout
@@ -74,30 +113,12 @@ jobs:
 
       - store_test_artifacts
 
-  release-job:
-    description: Runs `yarn release`
-    executor: node
-    steps:
-      - checkout
-
-      # yarn
-      - install_yarn_deps_lib
-
-      # release
-      - release_lib
-
 commands:
   install_yarn_deps:
     steps:
       - restore_cache_yarn
       - run: yarn --frozen-lockfile
       - save_cache_yarn
-
-  install_yarn_deps_lib:
-    steps:
-      - restore_cache_yarn_lib
-      - run: yarn --frozen-lockfile
-      - save_cache_yarn_lib
 
   restore_cache_yarn:
     steps:
@@ -111,19 +132,7 @@ commands:
             - node_modules
           key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "yarn.lock" }}
 
-  restore_cache_yarn_lib:
-    steps:
-      - restore_cache:
-          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "yarn.lock" }}
-
-  save_cache_yarn_lib:
-    steps:
-      - save_cache:
-          paths:
-            - node_modules
-          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "yarn.lock" }}
-
-  release_lib:
+  release:
     steps:
       - run:
           name: Release (if needed)
