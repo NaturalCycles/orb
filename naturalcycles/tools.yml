@@ -113,6 +113,20 @@ jobs:
 
       - store_test_artifacts
 
+  deploy-gae-job:
+    executor: node-gcloud
+    steps:
+      - checkout
+      - install_yarn_deps
+
+      - run:
+          name: gcloud auth
+          command: |
+            gcloud version
+            echo $GCP_SERVICE_ACCOUNT | gcloud auth activate-service-account --key-file=-
+
+      - run: yarn deploy-gae
+
 commands:
   install_yarn_deps:
     steps:
