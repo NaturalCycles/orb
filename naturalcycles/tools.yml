@@ -173,13 +173,13 @@ commands:
   store_test_artifacts:
     steps:
       - store_test_results:
-          path: report/jest
+          path: tmp/jest
       - store_artifacts:
-          path: report/jest
+          path: tmp/jest
           destination: jest
       - store_artifacts:
           path: coverage/lcov-report
           destination: coverage-unit
       - store_artifacts:
-          path: report/coverage-integration/lcov-report
+          path: tmp/coverage-integration/lcov-report
           destination: coverage-integration
