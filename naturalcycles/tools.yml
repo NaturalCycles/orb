@@ -1,8 +1,5 @@
 #
-# circleci orb validate naturalcycles/tools.yml
-#
-# circleci orb publish naturalcycles/tools.yml naturalcycles/tools@dev:1
-# circleci orb publish increment naturalcycles/tools.yml naturalcycles/tools patch
+# circleci orb validate naturalcycles/tools.yml && circleci orb publish increment naturalcycles/tools.yml naturalcycles/tools patch
 #
 version: 2.1
 description: Tools orb
@@ -30,9 +27,8 @@ jobs:
       # build
       - run: yarn build
 
-      # lint-all
-      - run: yarn lint-all --commitOnChanges
-      # todo: --commitOnChanges and --failOnChanges as boolean parameters
+      # lint-all (withou --commitOnChanges)
+      - run: yarn lint-all
 
   lint-job:
     executor: node
