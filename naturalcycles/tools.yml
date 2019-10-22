@@ -7,12 +7,12 @@ description: Tools orb
 executors:
   node:
     docker:
-      - image: naturalcycles/ci-node:12-latest
+      - image: naturalcycles/ci-node:latest
     working_directory: ~/repo
 
   node-gcloud:
     docker:
-      - image: naturalcycles/ci-node-gcloud:12-latest
+      - image: naturalcycles/ci-node-gcloud:latest
     working_directory: ~/repo
 
 jobs:
