@@ -76,6 +76,7 @@ jobs:
     executor: node
     environment:
       CC_TEST_REPORTER_ID: << parameters.CC_TEST_REPORTER_ID >>
+      JEST_ALPHABETIC: 1
     steps:
       - checkout
 
