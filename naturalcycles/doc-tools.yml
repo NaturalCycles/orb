@@ -1,0 +1,61 @@
+#
+# circleci orb validate naturalcycles/doc-tools.yml
+# circleci orb publish naturalcycles/doc-tools.yml naturalcycles/doc-tools@dev:4 #dev publish
+# circleci orb publish increment naturalcycles/doc-tools.yml naturalcycles/doc-tools patch #new version
+#
+#
+version: 2.1
+description: Orb for release documentation creation and storage
+
+executors:
+  artifacts:
+    docker:
+      - image: naturalcycles/orb-artifacts:orb-0 # Image for 0.x.x orbs
+    working_directory: ~/repo
+
+jobs:
+  #
+  # Requires environment variables: PROJECT_PR
+  # Test execution must have stored junit xml files in artifacts in junit-results/<test folder a>/*.xml
+  #
+
+  fetch-and-pdf-junit-reports:
+    executor: artifacts
+    steps:
+      - checkout
+      - attach-ws
+      - load-state-env
+
+      - run:
+          name: "Fetch junit results from the github PR"
+          command: yarn --cwd /scripts/typescript/ tsn fetchCircleCiJunitTestResults.ts
+      - run:
+          name: "Merge all xml files"
+          command: globbing-command-wrapper.py --pattern "/tmp/workspace/junit-result/**/*.xml" --command "junit-merger.py merge LOCAL_PATTERN merged-report.xml"
+      - run:
+          name: Convert xml to html
+          command: globbing-command-wrapper.py --pattern "/tmp/workspace/junit-result/**/merged-report.xml" --command "junit2html LOCAL_PATTERN merged-report.html"
+      # Patch HTML report with data from junit-variables.json $VERSION env var in current context.
+      # Update title, add version, add generic amount of headers and convert to PDF using filename from json
+      - run:
+          name: "Patch HTML report and generate pdf"
+          command: globbing-command-wrapper.py --pattern "/tmp/workspace/junit-result/**/merged-report.html" --command "patch-and-pdf-html-report.py LOCAL_PATTERN"
+
+      - run: yarn --cwd /scripts/typescript/ kpy --flat /tmp/workspace/junit-result/ **/*.pdf /tmp/workspace/final-release-docs/
+      - persist-ws
+
+commands:
+  attach-ws:
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+  persist-ws:
+    steps:
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths: ['*']
+  load-state-env:
+    steps:
+      - run:
+          name: "Reading environment variable state into local context."
+          command: cat /tmp/workspace/.env-state/.env >> $BASH_ENV ; source $BASH_ENV
