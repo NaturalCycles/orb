@@ -22,7 +22,6 @@ jobs:
   fetch-and-pdf-junit-reports:
     executor: artifacts
     steps:
-      - checkout
       - attach-ws
       - load-state-env
 
@@ -44,6 +43,38 @@ jobs:
       - run: yarn --cwd /scripts/typescript/ kpy --flat /tmp/workspace/junit-result/ **/*.pdf /tmp/workspace/final-release-docs/
       - persist-ws
 
+  #
+  # Opinionated folder structure: Puts docs in: <specified folder>/${CIRCLE_PROJECT_REPONAME}/${VERSION}
+  #
+  # Requires environment variables:
+  # RELEASE_DOCS_GDRIVE_FOLDER_ID - folder to which to upload files relative to.
+  # RELEASE_DOCS_TEAMDRIVE_ID - optional team drive ID in which the above folder resides.
+  # CIRCLE_PROJECT_REPONAME - auto-populated by circleci
+  # GOOGLE_SERVICE_ACCOUNT - service account with write access to the specified folder.
+  # VERSION - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
+  #
+
+  upload-release-docs-to-gdrive:
+    executor: artifacts
+    steps:
+      - attach-ws
+      - load-state-env
+      - run:
+          name: Upload release docs to gdrive
+          command: |
+            # Get google key from env var
+            mkdir /home/circleci/.gdrive;
+            echo $GOOGLE_SERVICE_ACCOUNT > /tmp/gcp-key.json
+
+            # upload pdf files
+            upload-to-teamdrive.py --service_account=/tmp/gcp-key.json\
+                                   --teamdrive_id=${RELEASE_DOCS_TEAMDRIVE_ID}\
+                                   --target_folder_id=${RELEASE_DOCS_GDRIVE_FOLDER_ID}\
+                                   --files "/tmp/workspace/final-release-docs/*"\
+                                   --flatten \
+                                   --remote_folder_prefix ${CIRCLE_PROJECT_REPONAME}/${VERSION}\
+                                   §--overwrite
+            rm -f /tmp/gcp-key.json
 commands:
   attach-ws:
     steps:
