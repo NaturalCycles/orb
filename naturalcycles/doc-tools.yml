@@ -73,7 +73,7 @@ jobs:
                                    --files "/tmp/workspace/final-release-docs/*"\
                                    --flatten \
                                    --remote_folder_prefix ${CIRCLE_PROJECT_REPONAME}/${VERSION}\
-                                   §--overwrite
+                                   --overwrite
             rm -f /tmp/gcp-key.json
 commands:
   attach-ws:
