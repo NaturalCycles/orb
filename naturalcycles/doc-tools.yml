@@ -14,9 +14,61 @@ executors:
     working_directory: ~/repo
 
 jobs:
+
   #
-  # Requires environment variables: PROJECT_PR
-  # Test execution must have stored junit xml files in artifacts in junit-results/<test folder a>/*.xml
+  # Creates a release document (pdf) containing:
+  # * Build info: version, build time
+  # * Approvers (pulled from github PR reviewers) falls back to PR merger
+  # * Released by (PR merger)
+  # * Commit log
+  # * PR body (converts markdown to html before making into pdf)
+  #
+  # Assumptions
+  # * Assumes latest commit contains github standard text referencing merged PR ("/Merge pull request #(\d{1,6}) from/")
+  #
+  # Required env vars:
+  # * GITHUB_TOKEN (with read access to PRs)
+  # * RELEASE_DOC_TITLE (Title for h1)
+  # * RELEASE_DOC_FILE (excl.pdf)
+  # * VERSION - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
+  # * DEPLOYMENT_DATE - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
+  # * CIRCLE_PROJECT_REPONAME
+  # * CIRCLE_PROJECT_USERNAME
+  # * CIRCLE_SHA1
+  #
+
+  create-release-document:
+    docker:
+      - image: naturalcycles/orb-artifacts:orb-0
+    steps:
+      - attach-ws
+      - load-state-env
+      - run:
+          name: Create release document
+          command: |
+            yarn --cwd /scripts/typescript/ tsn createReleaseDoc.ts
+            mkdir -p /tmp/workspace/final-release-docs
+            wkhtmltopdf /tmp/release.html /tmp/workspace/final-release-docs/${RELEASE_DOC_FILE}.pdf
+      - remove-state-env
+      - persist-ws
+
+  #
+  # Fetches artifacts from circleci github checks for the PR this commit represents.
+  # Any amount of test reports is supported. Each should have a folder saved in job artifacts: junit-results/<test-xyz>
+  # Each test must have:
+  # * Any number of *.xml junit files
+  # * A junit-variables.json containing at least: title, filename_prefix. (May contain any additional amount of headers, e.g. ..., "headers": {"name": "Version", "text": "1.0"})
+  # Outputs PDFs in: workspace/final-release-docs/
+  #
+  # Assumptions
+  # * Assumes latest commit contains github standard text referencing merged PR ("/Merge pull request #(\d{1,6}) from/")
+  #
+  # Required env vars:
+  # * GITHUB_TOKEN (with read access to PRs)
+  # * CIRCLE_CI_TOKEN (for current repo, used to fetch build artifacts)
+  # * CIRCLE_PROJECT_REPONAME
+  # * CIRCLE_PROJECT_USERNAME
+  # * CIRCLE_SHA1
   #
 
   fetch-and-pdf-junit-reports:
@@ -41,6 +93,7 @@ jobs:
           command: globbing-command-wrapper.py --pattern "/tmp/workspace/junit-result/**/merged-report.html" --command "patch-and-pdf-html-report.py LOCAL_PATTERN"
 
       - run: yarn --cwd /scripts/typescript/ kpy --flat /tmp/workspace/junit-result/ **/*.pdf /tmp/workspace/final-release-docs/
+      - remove-state-env
       - persist-ws
 
   #
@@ -51,7 +104,7 @@ jobs:
   # RELEASE_DOCS_TEAMDRIVE_ID - optional team drive ID in which the above folder resides.
   # CIRCLE_PROJECT_REPONAME - auto-populated by circleci
   # GOOGLE_SERVICE_ACCOUNT - service account with write access to the specified folder.
-  # VERSION - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
+  # VERSION - from previous jobs, assumed to reside in env state in workspace (workspace/.env-state/.env)
   #
 
   upload-release-docs-to-gdrive:
@@ -90,3 +143,11 @@ commands:
       - run:
           name: "Reading environment variable state into local context."
           command: cat /tmp/workspace/.env-state/.env >> $BASH_ENV ; source $BASH_ENV
+  remove-state-env:
+    steps:
+      - run:
+          name: Clean up workspace env state to support parallelism
+          command: |
+            # No env state to save in this job, remove so it can it can run concurrently
+            # (circleci can't handle parallel jobs writing to same workspace file)
+            rm -f /tmp/workspace/.env-state/.env
