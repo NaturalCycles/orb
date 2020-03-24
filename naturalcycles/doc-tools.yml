@@ -10,7 +10,7 @@ description: Orb for release documentation creation and storage
 executors:
   artifacts:
     docker:
-      - image: naturalcycles/orb-artifacts:orb-0 # Image for 0.x.x orbs
+      - image: naturalcycles/orb-artifacts:orb-1 # Image for 0.x.x orbs
     working_directory: ~/repo
 
 jobs:
@@ -38,8 +38,7 @@ jobs:
   #
 
   create-release-document:
-    docker:
-      - image: naturalcycles/orb-artifacts:orb-0
+    executor: artifacts
     steps:
       - attach-ws
       - load-state-env
