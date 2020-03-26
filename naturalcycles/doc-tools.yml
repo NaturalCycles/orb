@@ -10,7 +10,7 @@ description: Orb for release documentation creation and storage
 executors:
   artifacts:
     docker:
-      - image: naturalcycles/orb-artifacts:orb-1 # Image for 0.x.x orbs
+      - image: naturalcycles/orb-artifacts:orb-1 # Image for 1.x.x orbs
     working_directory: ~/repo
 
 jobs:
@@ -48,8 +48,7 @@ jobs:
             yarn --cwd /scripts/typescript/ tsn createReleaseDoc.ts
             mkdir -p /tmp/workspace/final-release-docs
             wkhtmltopdf /tmp/release.html /tmp/workspace/final-release-docs/${RELEASE_DOC_FILE}.pdf
-      - remove-state-env
-      - persist-ws
+      - persist-release-docs-ws
 
   #
   # Fetches artifacts from circleci github checks for the PR this commit represents.
@@ -92,8 +91,25 @@ jobs:
           command: globbing-command-wrapper.py --pattern "/tmp/workspace/junit-result/**/merged-report.html" --command "patch-and-pdf-html-report.py LOCAL_PATTERN"
 
       - run: yarn --cwd /scripts/typescript/ kpy --flat /tmp/workspace/junit-result/ **/*.pdf /tmp/workspace/final-release-docs/
-      - remove-state-env
-      - persist-ws
+      - persist-release-docs-ws
+
+  link-jira-tickets-to-pr:
+    executor: artifacts
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Link Jira tickets to PR
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward prod"
+              yarn --cwd /scripts/typescript/ tsn linkJiraToPR.ts --srcBranch=${CIRCLE_BRANCH} --targetBranch=prod --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
+            elif [ "${CIRCLE_BRANCH}" == "prod" ]; then
+              echo "The branch is ${CIRCLE_BRANCH}, skip"
+            else
+              echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward master"
+              yarn --cwd /scripts/typescript/ tsn linkJiraToPR.ts --srcBranch=${CIRCLE_BRANCH} --targetBranch=master --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
+            fi
 
   #
   # Opinionated folder structure: Puts docs in: <specified folder>/${CIRCLE_PROJECT_REPONAME}/${VERSION}
@@ -127,26 +143,53 @@ jobs:
                                    --remote_folder_prefix ${CIRCLE_PROJECT_REPONAME}/${VERSION}\
                                    --overwrite
             rm -f /tmp/gcp-key.json
+
 commands:
   attach-ws:
     steps:
       - attach_workspace:
           at: /tmp/workspace
-  persist-ws:
+  persist-release-docs-ws:
     steps:
       - persist_to_workspace:
           root: /tmp/workspace
-          paths: ['*']
+          paths: ['final-release-docs'] # Don't blindly persist everything, since that might cause issues concurrency issues
   load-state-env:
     steps:
       - run:
           name: "Reading environment variable state into local context."
           command: cat /tmp/workspace/.env-state/.env >> $BASH_ENV ; source $BASH_ENV
-  remove-state-env:
+  store-test-data:
+    description: Opionated set of parameters to store from test for fetch-and-pdf-junit-reports job to use later. Does not persist the workspace.
+    parameters:
+      test-folder:
+        type: string
+      title:
+        type: string
+      filename_prefix:
+        type: string
     steps:
       - run:
-          name: Clean up workspace env state to support parallelism
+          when: always
+          name: Storing test metadata to workspace
           command: |
-            # No env state to save in this job, remove so it can it can run concurrently
-            # (circleci can't handle parallel jobs writing to same workspace file)
-            rm -f /tmp/workspace/.env-state/.env
+            if [ "$CIRCLE_NODE_INDEX" -eq "0" ]; then # Only store to workspace once to avoid parallelization issues.
+              echo "{
+                \"title\": \"<< parameters.title >>\",
+                \"filename_prefix\": \"<< parameters.filename_prefix >>\",
+                \"headers\": [
+                {
+                  \"name\": \"Branch\",
+                  \"text\": \"${CIRCLE_BRANCH}\"
+                },
+                {
+                  \"name\": \"CircleCI Job\",
+                  \"text\": \"<a href=\\\"https://circleci.com/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/${CIRCLE_BUILD_NUM}\\\">${CIRCLE_BUILD_NUM}</a>\"
+                }
+                ]
+              }" > /tmp/workspace/junit-result/<< parameters.test-folder >>/junit-variables.json
+            fi
+      - store_artifacts:
+          when: always
+          path: /tmp/workspace/junit-result
+          destination: junit-result # Fetched from here by release documentation job
