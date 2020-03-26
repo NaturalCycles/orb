@@ -10,7 +10,7 @@ description: Orb for release documentation creation and storage
 executors:
   artifacts:
     docker:
-      - image: naturalcycles/orb-artifacts:orb-1 # Image for 0.x.x orbs
+      - image: naturalcycles/orb-artifacts:orb-1 # Image for 1.x.x orbs
     working_directory: ~/repo
 
 jobs:
@@ -92,6 +92,24 @@ jobs:
 
       - run: yarn --cwd /scripts/typescript/ kpy --flat /tmp/workspace/junit-result/ **/*.pdf /tmp/workspace/final-release-docs/
       - persist-release-docs-ws
+
+  link-jira-tickets-to-pr:
+    executor: artifacts
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Link Jira tickets to PR
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward prod"
+              yarn --cwd /scripts/typescript/ tsn linkJiraToPR.ts --srcBranch=${CIRCLE_BRANCH} --targetBranch=prod --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
+            elif [ "${CIRCLE_BRANCH}" == "prod" ]; then
+              echo "The branch is ${CIRCLE_BRANCH}, skip"
+            else
+              echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward master"
+              yarn --cwd /scripts/typescript/ tsn linkJiraToPR.ts --srcBranch=${CIRCLE_BRANCH} --targetBranch=master --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
+            fi
 
   #
   # Opinionated folder structure: Puts docs in: <specified folder>/${CIRCLE_PROJECT_REPONAME}/${VERSION}
