@@ -19,10 +19,7 @@ jobs:
   build-job:
     executor: node
     steps:
-      - checkout
-
-      # yarn
-      - install_yarn_deps
+      - setup_node
 
       # build
       - run: yarn build
@@ -30,43 +27,42 @@ jobs:
       # lint-all (withou --commitOnChanges)
       - run: yarn lint-all
 
+      - job_end
+
   lint-job:
     executor: node
     steps:
-      - checkout
-
-      # yarn
-      - install_yarn_deps
+      - setup_node
 
       # lint-all
       - run: yarn lint-all --commitOnChanges
       # todo: --commitOnChanges and --failOnChanges as boolean parameters
 
+      - job_end
+
   release-job:
     description: Runs `yarn release`
     executor: node
     steps:
-      - checkout
-
-      # yarn
-      - install_yarn_deps
+      - setup_node
 
       # release
       - release
 
+      - job_end
+
   publish-job:
     executor: node
     steps:
-      - checkout
-
-      # yarn
-      - install_yarn_deps
+      - setup_node
 
       # build
       - run: yarn build-prod
 
       # release
       - release
+
+      - job_end
 
   test-job:
     parameters:
@@ -76,12 +72,8 @@ jobs:
     executor: node
     environment:
       CC_TEST_REPORTER_ID: << parameters.CC_TEST_REPORTER_ID >>
-      JEST_ALPHABETIC: 1
     steps:
-      - checkout
-
-      # yarn
-      - install_yarn_deps
+      - setup_node
 
       # build
       - run: yarn build
@@ -90,6 +82,24 @@ jobs:
       - test_ci
 
       - store_test_artifacts
+      - job_end
+
+  test-leaks-job:
+    executor: node
+    steps:
+      - setup_node
+
+      # test
+      - run:
+          name: test-leaks
+          command: |
+            yarn add -D patch-package weak-napi
+            yarn patch-package
+            # poor man's retry
+            yarn test-leaks || yarn test-leaks
+
+      - store_test_artifacts
+      - job_end
 
   nightly-job:
     executor: node
@@ -102,17 +112,13 @@ jobs:
       - run: yarn build
       - run: yarn test-ci
 
-      - run:
-          name: Report failure
-          when: on_fail
-          command: |
-            echo todo
-
       - store_test_artifacts
+      - job_end
 
   deploy-gae-job:
     executor: node-gcloud
     steps:
+      # not setup_node, because it runs in different Docker image! (so, yarn cache should NOT be saved there!)
       - checkout
       - install_yarn_deps
 
@@ -130,12 +136,24 @@ jobs:
             fi
 
       - run: yarn deploy-gae --logs
+      - job_end
 
 commands:
+  setup_node:
+    description: Performs usual initial steps for every node job
+    steps:
+      - checkout
+      - install_yarn_deps
+
   install_yarn_deps:
     steps:
       - restore_cache_yarn
-      - run: yarn --frozen-lockfile
+      - run:
+          name: yarn --frozen-lockfile
+          command: |
+            # Will write $NPM_TOKEN to ~/.npmrc (if defined)
+            [ ! -z "$NPM_TOKEN" ] && echo -e "always-auth=true\n//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+            yarn --frozen-lockfile
       - save_cache_yarn
 
   restore_cache_yarn:
@@ -180,3 +198,21 @@ commands:
       - store_artifacts:
           path: tmp/coverage-integration/lcov-report
           destination: coverage-integration
+
+  job_end:
+    description: Allows to run onJobSuccess.ts / onJobFail.ts hooks
+    steps:
+      - run:
+          name: yarn tsn scripts/onJobSuccess.ts
+          command: |
+            if [ -f ./scripts/onJobSuccess.ts ]; then
+                yarn tsn onJobSuccess.ts
+            fi
+
+      - run:
+          name: yarn tsn scripts/onJobFail.ts
+          when: on_fail
+          command: |
+            if [ -f ./scripts/onJobFail.ts ]; then
+                yarn tsn onJobFail.ts
+            fi
