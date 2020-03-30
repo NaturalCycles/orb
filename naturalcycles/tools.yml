@@ -96,7 +96,7 @@ jobs:
             yarn add -D patch-package weak-napi
             yarn patch-package
             # poor man's retry
-            yarn test-leaks || yarn test-leaks
+            yarn test-leaks || yarn test-leaks || yarn test-leaks
 
       - store_test_artifacts
       - job_end
@@ -118,9 +118,7 @@ jobs:
   deploy-gae-job:
     executor: node-gcloud
     steps:
-      # not setup_node, because it runs in different Docker image! (so, yarn cache should NOT be saved there!)
-      - checkout
-      - install_yarn_deps
+      - setup_node
 
       - run:
           name: gcloud auth
@@ -159,14 +157,14 @@ commands:
   restore_cache_yarn:
     steps:
       - restore_cache:
-          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "yarn.lock" }}
+          key: deps-v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ arch }}-{{ checksum "yarn.lock" }}
 
   save_cache_yarn:
     steps:
       - save_cache:
           paths:
             - node_modules
-          key: deps-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-v1-{{ checksum "yarn.lock" }}
+          key: deps-v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ arch }}-{{ checksum "yarn.lock" }}
 
   release:
     steps:
