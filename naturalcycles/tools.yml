@@ -2,7 +2,7 @@
 # circleci orb validate naturalcycles/tools.yml && circleci orb publish increment naturalcycles/tools.yml naturalcycles/tools patch
 #
 version: 2.1
-description: Tools orb
+description: Orb for generic (not NC-internal) things.
 
 executors:
   node:

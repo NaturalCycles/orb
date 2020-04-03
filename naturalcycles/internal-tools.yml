@@ -1,0 +1,22 @@
+#
+# circleci orb validate naturalcycles/internal-tools.yml && circleci orb publish increment naturalcycles/internal-tools.yml naturalcycles/internal-tools patch
+#
+version: 2.1
+description: Orb for NC-internal things. Generic things live in `tools.yaml`
+
+commands:
+  monitoring_curl:
+    description: Pings Monitoring Service with success/failure, based on curl
+    steps:
+      - run:
+          name: Report job success
+          command: |
+            export JOB_ID=${CIRCLE_PROJECT_REPONAME}_${CIRCLE_JOB}
+            curl --retry 3 -X PUT -H "Authorization: ${NCBACKEND3_MASTER_SECRET_HEADER}" https://api-master.naturalcycles.com/api/v3/qa/monitoring/${JOB_ID}/success || true
+
+      - run:
+          name: Report job failure
+          when: on_fail
+          command: |
+            export JOB_ID=${CIRCLE_PROJECT_REPONAME}_${CIRCLE_JOB}
+            curl --retry 3 -X PUT -H "Authorization: ${NCBACKEND3_MASTER_SECRET_HEADER}" https://api-master.naturalcycles.com/api/v3/qa/monitoring/${JOB_ID}/fail || true
