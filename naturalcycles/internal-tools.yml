@@ -5,7 +5,16 @@ version: 2.1
 description: Orb for NC-internal things. Generic things live in `tools.yaml`
 
 commands:
-  monitoring_curl:
+  monitoring_start:
+    description: Pings Monitoring Service that job has started
+    steps:
+      - run:
+          name: Report job start
+          command: |
+            export JOB_ID=${CIRCLE_PROJECT_REPONAME}_${CIRCLE_JOB}
+            curl --retry 3 -X PUT -H "Authorization: ${NCBACKEND3_MASTER_SECRET_HEADER}" https://api-master.naturalcycles.com/api/v3/qa/monitoring/${JOB_ID}/start || true
+
+  monitoring_result:
     description: Pings Monitoring Service with success/failure, based on curl
     steps:
       - run:
