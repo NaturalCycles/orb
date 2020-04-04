@@ -141,7 +141,17 @@ commands:
     description: Performs usual initial steps for every node job
     steps:
       - checkout
+      - npm_token
       - install_yarn_deps
+
+  npm_token:
+    description: Saves env.NPM_TOKEN (if present) to ~/.npmrc file
+    steps:
+      - run:
+          name: .npmrc
+          command: |
+            # Will write $NPM_TOKEN to ~/.npmrc (if defined)
+            [ ! -z "$NPM_TOKEN" ] && echo -e "always-auth=true\n//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
 
   install_yarn_deps:
     steps:
@@ -149,8 +159,6 @@ commands:
       - run:
           name: yarn --frozen-lockfile
           command: |
-            # Will write $NPM_TOKEN to ~/.npmrc (if defined)
-            [ ! -z "$NPM_TOKEN" ] && echo -e "always-auth=true\n//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
             yarn --frozen-lockfile
       - save_cache_yarn
 
@@ -198,19 +206,19 @@ commands:
           destination: coverage-integration
 
   job_end:
-    description: Allows to run onJobSuccess.ts / onJobFail.ts hooks
+    description: Allows to run onJobEnd.ts hook with --result success/fail
     steps:
       - run:
-          name: yarn tsn scripts/onJobSuccess.ts
+          name: onJobEnd.ts --result success
           command: |
-            if [ -f ./scripts/onJobSuccess.ts ]; then
-                yarn tsn onJobSuccess.ts
+            if [ -f ./scripts/onJobEnd.ts ]; then
+                yarn tsn onJobEnd.ts --result success
             fi
 
       - run:
-          name: yarn tsn scripts/onJobFail.ts
+          name: onJobEnd.ts --result fail
           when: on_fail
           command: |
-            if [ -f ./scripts/onJobFail.ts ]; then
-                yarn tsn onJobFail.ts
+            if [ -f ./scripts/onJobEnd.ts ]; then
+                yarn tsn onJobEnd.ts --result fail
             fi
