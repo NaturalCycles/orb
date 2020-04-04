@@ -151,13 +151,13 @@ commands:
           name: .npmrc
           command: |
             # Will write $NPM_TOKEN to ~/.npmrc (if defined)
-            [ ! -z "$NPM_TOKEN" ] && echo -e "always-auth=true\n//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+            [ ! -z "$NPM_TOKEN" ] && echo -e "always-auth=true\n//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc || true
 
   install_yarn_deps:
     steps:
       - restore_cache_yarn
       - run:
-          name: yarn --frozen-lockfile
+          name: yarn
           command: |
             yarn --frozen-lockfile
       - save_cache_yarn
@@ -183,7 +183,7 @@ commands:
   test_ci:
     steps:
       - run:
-          name: Test
+          name: yarn test-ci
           command: |
             # Use `cc-test-reporter` only if env variable is set
             [ ! -z "$CC_TEST_REPORTER_ID" ] && echo "Will use CC $CC_TEST_REPORTER_ID" || echo "Will NOT use CC $CC_TEST_REPORTER_ID"
@@ -212,7 +212,7 @@ commands:
           name: onJobEnd.ts --result success
           command: |
             if [ -f ./scripts/onJobEnd.ts ]; then
-                yarn tsn onJobEnd.ts --result success
+                tsn onJobEnd.ts --result success
             fi
 
       - run:
@@ -220,5 +220,5 @@ commands:
           when: on_fail
           command: |
             if [ -f ./scripts/onJobEnd.ts ]; then
-                yarn tsn onJobEnd.ts --result fail
+                tsn onJobEnd.ts --result fail
             fi

@@ -11,8 +11,8 @@ commands:
       - run:
           name: Report job start
           command: |
-            export JOB_ID=${CIRCLE_PROJECT_REPONAME}_${CIRCLE_JOB}
-            curl --retry 3 -X PUT -H "Authorization: ${NCBACKEND3_MASTER_SECRET_HEADER}" https://api-master.naturalcycles.com/api/v3/qa/monitoring/${JOB_ID}/start || true
+            export JOB_ID=${CIRCLE_PROJECT_REPONAME}_${CIRCLE_BRANCH}_${CIRCLE_JOB}
+            curl --retry 3 -X PUT -H "Authorization: ${NCBACKEND3_MASTER_SECRET_HEADER}" https://api-master.naturalcycles.com/api/v3/monitoring/${JOB_ID}/start || true
 
   monitoring_result:
     description: Pings Monitoring Service with success/failure, based on curl
@@ -20,12 +20,12 @@ commands:
       - run:
           name: Report job success
           command: |
-            export JOB_ID=${CIRCLE_PROJECT_REPONAME}_${CIRCLE_JOB}
-            curl --retry 3 -X PUT -H "Authorization: ${NCBACKEND3_MASTER_SECRET_HEADER}" https://api-master.naturalcycles.com/api/v3/qa/monitoring/${JOB_ID}/success || true
+            export JOB_ID=${CIRCLE_PROJECT_REPONAME}_${CIRCLE_BRANCH}_${CIRCLE_JOB}
+            curl --retry 3 -X PUT -H "Authorization: ${NCBACKEND3_MASTER_SECRET_HEADER}" https://api-master.naturalcycles.com/api/v3/monitoring/${JOB_ID}/success || true
 
       - run:
           name: Report job failure
           when: on_fail
           command: |
-            export JOB_ID=${CIRCLE_PROJECT_REPONAME}_${CIRCLE_JOB}
-            curl --retry 3 -X PUT -H "Authorization: ${NCBACKEND3_MASTER_SECRET_HEADER}" https://api-master.naturalcycles.com/api/v3/qa/monitoring/${JOB_ID}/fail || true
+            export JOB_ID=${CIRCLE_PROJECT_REPONAME}_${CIRCLE_BRANCH}_${CIRCLE_JOB}
+            curl --retry 3 -X PUT -H "Authorization: ${NCBACKEND3_MASTER_SECRET_HEADER}" https://api-master.naturalcycles.com/api/v3/monitoring/${JOB_ID}/fail || true
