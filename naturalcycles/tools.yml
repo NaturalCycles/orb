@@ -136,6 +136,32 @@ jobs:
       - run: yarn deploy-gae --logs
       - job_end
 
+  snyk-job:
+    executor: node
+    steps:
+      - setup_node # just "checkout" would be enough, but "job_end" needs node_modules
+
+      - run:
+          name: snyk test
+          command: |
+            npm i -g snyk
+            snyk config set api=$SNYK_TOKEN
+            snyk test
+
+      - job_end
+
+  yarn-audit-job:
+    executor: node
+    steps:
+      - setup_node # just "checkout" would be enough, but "job_end" needs node_modules
+
+      - run:
+          name: yarn audit
+          command: |
+            yarn audit
+
+      - job_end
+
 commands:
   setup_node:
     description: Performs usual initial steps for every node job
