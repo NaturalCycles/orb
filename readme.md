@@ -4,6 +4,8 @@
 > Set of reusable CircleCI Orbs.
 
 # [naturalcycles/tools](https://circleci.com/orbs/registry/orb/naturalcycles/tools)
+# [naturalcycles/internal-tools](https://circleci.com/orbs/registry/orb/naturalcycles/internal-tools)
+# [naturalcycles/doc-tools](https://circleci.com/orbs/registry/orb/naturalcycles/doc-tools)
 
 Executors:
 

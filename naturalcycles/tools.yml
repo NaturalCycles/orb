@@ -232,19 +232,64 @@ commands:
           destination: coverage-integration
 
   job_end:
-    description: Allows to run onJobEnd.ts hook with --result success/fail
+    description: Allows to run onJobEnd.ts hook with --result success/fail. Also sends Slack message on failure if env.SLACK_ON_FAILURE_CHANNEL is defined (e.g \#alerts).
     steps:
       - run:
-          name: onJobEnd.ts --result success
+          name: On success
           command: |
             if [ -f ./scripts/onJobEnd.ts ]; then
                 tsn onJobEnd.ts --result success
             fi
 
       - run:
-          name: onJobEnd.ts --result fail
+          name: On failure
           when: on_fail
           command: |
+            # todo: it needs more thought before enabling it by default
+            #            if [ ! -z "${SLACK_WEBHOOK_URL}" ]; then
+            #              if [ ! -z "${SLACK_ON_FAILURE_CHANNEL}" ]; then
+            #                curl -X POST -H "Content-Type: application/json" -d "{\"channel\": \"${SLACK_ON_FAILURE_CHANNEL}\", \"text\": \"\`${CIRCLE_PROJECT_REPONAME}/${CIRCLE_BRANCH}/${CIRCLE_JOB}\` <${CIRCLE_BUILD_URL}|failed>\", \"username\": \"bot\", \"icon_emoji\": \":fire:\"}" ${SLACK_WEBHOOK_URL}
+            #              fi
+            #            fi
             if [ -f ./scripts/onJobEnd.ts ]; then
                 tsn onJobEnd.ts --result fail
             fi
+
+  slack_on_failure:
+    description: Sends a Slack message if Job fails. Needs env.SLACK_WEBHOOK_URL and `channel` parameter (defaults to `#ci-alerts`)
+    parameters:
+      channel:
+        type: string
+        default: "#ci-alerts"
+      username:
+        type: string
+        default: bot
+      icon_emoji:
+        type: string
+        default: ":fire:"
+    steps:
+      - run:
+          name: Slack on failure
+          when: on_fail
+          command: |
+            [ -z "${SLACK_WEBHOOK_URL}" ] && echo "env.SLACK_WEBHOOK_URL is required!" && exit 1
+            curl -X POST -H "Content-Type: application/json" -d "{\"channel\": \"<< parameters.channel >>\", \"text\": \"\`${CIRCLE_PROJECT_REPONAME}/${CIRCLE_BRANCH}/${CIRCLE_JOB}\` <${CIRCLE_BUILD_URL}|failed>\", \"username\": \"<< parameters.username >>\", \"icon_emoji\": \"<< parameters.icon_emoji >>\"}" ${SLACK_WEBHOOK_URL}
+
+  slack_on_success:
+    description: Sends a Slack message if Job succeeds (need to be placed in the end of the job). Needs env.SLACK_WEBHOOK_URL and `channel` parameter (defaults to `#ci-success`)
+    parameters:
+      channel:
+        type: string
+        default: "#ci-success"
+      username:
+        type: string
+        default: bot
+      icon_emoji:
+        type: string
+        default: ":white_check_mark:"
+    steps:
+      - run:
+          name: Slack on success
+          command: |
+            [ -z "${SLACK_WEBHOOK_URL}" ] && echo "env.SLACK_WEBHOOK_URL is required!" && exit 1
+            curl -X POST -H "Content-Type: application/json" -d "{\"channel\": \"<< parameters.channel >>\", \"text\": \"\`${CIRCLE_PROJECT_REPONAME}/${CIRCLE_BRANCH}/${CIRCLE_JOB}\` <${CIRCLE_BUILD_URL}|completed>\", \"username\": \"<< parameters.username >>\", \"icon_emoji\": \"<< parameters.icon_emoji >>\"}" ${SLACK_WEBHOOK_URL}
