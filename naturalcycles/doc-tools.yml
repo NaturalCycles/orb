@@ -6,6 +6,8 @@
 #
 version: 2.1
 description: Orb for release documentation creation and storage
+orbs:
+  tools: naturalcycles/tools@2
 
 executors:
   artifacts:
@@ -49,6 +51,13 @@ jobs:
   #
 
   create-release-document:
+    parameters:
+      slack-notify-failure:
+        type: boolean
+        default: false
+      slack-channel:
+        type: string
+        default: "#ci-alerts"
     executor: artifacts
     steps:
       - attach-ws
@@ -60,6 +69,12 @@ jobs:
             mkdir -p /tmp/workspace/final-release-docs
             wkhtmltopdf /tmp/release.html /tmp/workspace/final-release-docs/${RELEASE_DOC_FILE}.pdf
       - persist-release-docs-ws
+      - when:
+          condition: << parameters.slack-notify-failure >>
+          steps:
+            - tools/slack_on_failure:
+                channel: << parameters.slack-channel >>
+
 
   #
   # Fetches artifacts from circleci github checks for the PR this commit represents.
@@ -81,6 +96,13 @@ jobs:
   #
 
   fetch-and-pdf-junit-reports:
+    parameters:
+      slack-notify-failure:
+        type: boolean
+        default: false
+      slack-channel:
+        type: string
+        default: "#ci-alerts"
     executor: artifacts
     steps:
       - attach-ws
@@ -103,6 +125,11 @@ jobs:
 
       - run: yarn --cwd /scripts/typescript/ kpy --flat /tmp/workspace/junit-result/ **/*.pdf /tmp/workspace/final-release-docs/
       - persist-release-docs-ws
+      - when:
+          condition: << parameters.slack-notify-failure >>
+          steps:
+            - tools/slack_on_failure:
+                channel: << parameters.slack-channel >>
 
   link-jira-tickets-to-pr:
     executor: artifacts
@@ -134,6 +161,13 @@ jobs:
   #
 
   upload-release-docs-to-gdrive:
+    parameters:
+      slack-notify-failure:
+        type: boolean
+        default: false
+      slack-channel:
+        type: string
+        default: "#ci-alerts"
     executor: artifacts
     steps:
       - attach-ws
@@ -154,7 +188,11 @@ jobs:
                                    --remote_folder_prefix ${CIRCLE_PROJECT_REPONAME}/${VERSION}\
                                    --overwrite
             rm -f /tmp/gcp-key.json
-
+      - when:
+          condition: << parameters.slack-notify-failure >>
+          steps:
+            - tools/slack_on_failure:
+                channel: << parameters.slack-channel >>
 commands:
   attach-ws:
     steps:
