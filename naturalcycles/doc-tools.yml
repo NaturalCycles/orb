@@ -28,6 +28,45 @@ jobs:
           command: |
             yarn --cwd /scripts/typescript/ tsn jiraReleaseComment.ts
 
+
+  #
+  # Append release to spreadsheet
+  #
+  #
+  # Required env vars:
+  # * GITHUB_TOKEN (with read access to PRs)
+  # * RELEASE_SPREADSHEET_ID (ID of the sheet, team drive supported)
+  # * VERSION - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
+  # * DEPLOYMENT_DATE - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
+  # * APPROVED_BY - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
+  # * CIRCLE_PROJECT_REPONAME
+  # * CIRCLE_PROJECT_USERNAME
+  #
+
+  append-release-to-sheet:
+    parameters:
+      slack-notify-failure:
+        type: boolean
+        default: false
+      slack-channel:
+        type: string
+        default: "#ci-alerts"
+    executor: artifacts
+    steps:
+      - attach-ws
+      - load-state-env
+      - run:
+          name: Create release document
+          command: |
+            echo $GOOGLE_SERVICE_ACCOUNT > /tmp/gcp-key.json
+            python3 python/append_release_to_spreadsheet.py -sa /tmp/gcp-key.json -sp ${RELEASE_SPREADSHEET_ID} -t ${CIRCLE_PROJECT_REPONAME} -v ${VERSION} -r ${REFERENCE} -rd ${DEPLOYMENT_DATE} -ab '${APPROVED_BY}'
+      - persist-release-docs-ws
+      - when:
+          condition: << parameters.slack-notify-failure >>
+          steps:
+            - tools/slack_on_failure:
+                channel: << parameters.slack-channel >>
+
   #
   # Creates a release document (pdf) containing:
   # * Build info: version, build time
@@ -69,6 +108,7 @@ jobs:
             mkdir -p /tmp/workspace/final-release-docs
             wkhtmltopdf /tmp/release.html /tmp/workspace/final-release-docs/${RELEASE_DOC_FILE}.pdf
       - persist-release-docs-ws
+      - persist-env-ws
       - when:
           condition: << parameters.slack-notify-failure >>
           steps:
@@ -198,6 +238,12 @@ commands:
     steps:
       - attach_workspace:
           at: /tmp/workspace
+  persist-env-ws:
+    steps:
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths: ['.env-state/.env']
+
   persist-release-docs-ws:
     steps:
       - persist_to_workspace:
