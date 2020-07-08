@@ -39,6 +39,7 @@ jobs:
   # * VERSION - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
   # * DEPLOYMENT_DATE - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
   # * APPROVED_BY - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
+  # * REFERENCE -  A generic reference for column B
   # * CIRCLE_PROJECT_REPONAME
   # * CIRCLE_PROJECT_USERNAME
   #
@@ -59,7 +60,7 @@ jobs:
           name: Create release document
           command: |
             echo $GOOGLE_SERVICE_ACCOUNT > /tmp/gcp-key.json
-            python3 python/append_release_to_spreadsheet.py -sa /tmp/gcp-key.json -sp ${RELEASE_SPREADSHEET_ID} -t ${CIRCLE_PROJECT_REPONAME} -v ${VERSION} -r ${REFERENCE} -rd ${DEPLOYMENT_DATE} -ab '${APPROVED_BY}'
+            append_release_to_spreadsheet.py -sa /tmp/gcp-key.json -sp ${RELEASE_SPREADSHEET_ID} -t ${CIRCLE_PROJECT_REPONAME} -v ${VERSION} -r ${REFERENCE} -rd ${DEPLOYMENT_DATE} -ab "${APPROVED_BY}"
       - persist-release-docs-ws
       - when:
           condition: << parameters.slack-notify-failure >>
