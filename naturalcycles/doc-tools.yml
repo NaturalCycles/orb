@@ -201,6 +201,9 @@ jobs:
     #                    will be injected into a temporary file that will be the target of GOOGLE_APPLICATION_CREDENTIALS
     # * json-dir - the directory in which to look for .json files to publish, usually subdir of workspace (/tmp/workspace)
     # * slack-channel - slack channel to use to send failure alerts
+    #
+    # Required env vars:
+    # * SLACK_WEBHOOK_URL (if using slack notification)
 
   publish-jsons-to-pubsub:
     parameters:
@@ -225,14 +228,13 @@ jobs:
       - run:
           name: Prepare GCP credentials
           command: |
-            echo ${!<< parameters.gcp-sa-env-var >>} > /tmp/gcp-key.json
+            echo ${<< parameters.gcp-sa-env-var >>} > /tmp/gcp-key.json
       - run:
           name: Run publish script
           command: |
-            GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json ; \
+            export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json ; \
             yarn --cwd /scripts/typescript/ tsn sendJsonToPubSub.ts --topic <<parameters.pubsub-topic>> \
             --jsonDir << parameters.json-dir >> --projectId << parameters.gcp-project >>
-      - persist-release-docs-ws
       - when:
           condition: << parameters.slack-notify-failure >>
           steps:
@@ -340,7 +342,10 @@ commands:
     steps:
       - run:
           name: "Reading environment variable state into local context."
-          command: cat /tmp/workspace/.env-state/.env >> $BASH_ENV ; source $BASH_ENV
+          command: |
+            test -f /tmp/workspace/.env-state/.env && \
+            cat /tmp/workspace/.env-state/.env >> $BASH_ENV ; source $BASH_ENV ||\
+            echo "No state env to load (/tmp/workspace/.env-state/.env not found)"
   store-test-data:
     description: Opionated set of parameters to store from test for fetch-and-pdf-junit-reports job to use later. Does not persist the workspace.
     parameters:
