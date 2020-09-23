@@ -39,6 +39,7 @@ jobs:
   # * VERSION - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
   # * DEPLOYMENT_DATE - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
   # * APPROVED_BY - from previous jobs, assumed to reside in env state in workspace (/tmp/workspace/.env-state/.env)
+  # * REFERENCE -  A generic reference for column B
   # * CIRCLE_PROJECT_REPONAME
   # * CIRCLE_PROJECT_USERNAME
   #
@@ -59,7 +60,7 @@ jobs:
           name: Create release document
           command: |
             echo $GOOGLE_SERVICE_ACCOUNT > /tmp/gcp-key.json
-            python3 python/append_release_to_spreadsheet.py -sa /tmp/gcp-key.json -sp ${RELEASE_SPREADSHEET_ID} -t ${CIRCLE_PROJECT_REPONAME} -v ${VERSION} -r ${REFERENCE} -rd ${DEPLOYMENT_DATE} -ab '${APPROVED_BY}'
+            append_release_to_spreadsheet.py -sa /tmp/gcp-key.json -sp ${RELEASE_SPREADSHEET_ID} -t ${CIRCLE_PROJECT_REPONAME} -v ${VERSION} -r ${REFERENCE} -rd ${DEPLOYMENT_DATE} -ab "${APPROVED_BY}"
       - persist-release-docs-ws
       - when:
           condition: << parameters.slack-notify-failure >>
@@ -190,6 +191,56 @@ jobs:
               yarn --cwd /scripts/typescript/ tsn linkJiraToPR.ts --srcBranch=${CIRCLE_BRANCH} --targetBranch=master --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
             fi
 
+    #
+    # Publish jsons to pubsub topic
+    #
+    # Params:
+    # * gcp-project - the id of the project that holds the pubsub topic
+    # * pubsub-topic - the name of the topic to publish json to
+    # * gcp-sa-env-var - the name of an environment variable containing the full service account key to use. This key
+    #                    will be injected into a temporary file that will be the target of GOOGLE_APPLICATION_CREDENTIALS
+    # * json-dir - the directory in which to look for .json files to publish, usually subdir of workspace (/tmp/workspace)
+    # * slack-channel - slack channel to use to send failure alerts
+    #
+    # Required env vars:
+    # * SLACK_WEBHOOK_URL (if using slack notification)
+
+  publish-jsons-to-pubsub:
+    parameters:
+      gcp-project:
+        type: string
+      pubsub-topic:
+        type: string
+      gcp-sa-env-var:
+        type: string
+      json-dir:
+        type: string
+      slack-notify-failure:
+        type: boolean
+        default: false
+      slack-channel:
+        type: string
+        default: "#ci-alerts"
+    executor: artifacts
+    steps:
+      - attach-ws
+      - load-state-env
+      - run:
+          name: Prepare GCP credentials
+          command: |
+            echo ${<< parameters.gcp-sa-env-var >>} > /tmp/gcp-key.json
+      - run:
+          name: Run publish script
+          command: |
+            export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json ; \
+            yarn --cwd /scripts/typescript/ tsn sendJsonToPubSub.ts --topic <<parameters.pubsub-topic>> \
+            --jsonDir << parameters.json-dir >> --projectId << parameters.gcp-project >>
+      - when:
+          condition: << parameters.slack-notify-failure >>
+          steps:
+            - tools/slack_on_failure:
+                channel: << parameters.slack-channel >>
+
   #
   # Opinionated folder structure: Puts docs in: <specified folder>/${CIRCLE_PROJECT_REPONAME}/${VERSION}
   #
@@ -291,7 +342,10 @@ commands:
     steps:
       - run:
           name: "Reading environment variable state into local context."
-          command: cat /tmp/workspace/.env-state/.env >> $BASH_ENV ; source $BASH_ENV
+          command: |
+            test -f /tmp/workspace/.env-state/.env && \
+            cat /tmp/workspace/.env-state/.env >> $BASH_ENV ; source $BASH_ENV ||\
+            echo "No state env to load (/tmp/workspace/.env-state/.env not found)"
   store-test-data:
     description: Opionated set of parameters to store from test for fetch-and-pdf-junit-reports job to use later. Does not persist the workspace.
     parameters:
