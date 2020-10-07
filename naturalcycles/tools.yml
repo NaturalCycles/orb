@@ -165,10 +165,15 @@ jobs:
 commands:
   setup_node:
     description: Performs usual initial steps for every node job
+    parameters:
+      cacheVersion:
+        type: string
+        default: "v1"
     steps:
       - checkout
       - npm_token
-      - install_yarn_deps
+      - install_yarn_deps:
+          cacheVersion: << parameters.cacheVersion >>
 
   npm_token:
     description: Saves env.NPM_TOKEN (if present) to ~/.npmrc file
@@ -180,25 +185,39 @@ commands:
             [ ! -z "$NPM_TOKEN" ] && echo -e "always-auth=true\n//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc || true
 
   install_yarn_deps:
+    parameters:
+      cacheVersion:
+        type: string
+        default: "v1"
     steps:
-      - restore_cache_yarn
+      - restore_cache_yarn:
+          cacheVersion: << parameters.cacheVersion >>
       - run:
           name: yarn
           command: |
             yarn --frozen-lockfile
-      - save_cache_yarn
+      - save_cache_yarn:
+          cacheVersion: << parameters.cacheVersion >>
 
   restore_cache_yarn:
+    parameters:
+      cacheVersion:
+        type: string
+        default: "v1"
     steps:
       - restore_cache:
-          key: deps-v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ arch }}-{{ checksum "yarn.lock" }}
+          key: deps-<< parameters.cacheVersion >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ arch }}-{{ checksum "yarn.lock" }}
 
   save_cache_yarn:
+    parameters:
+      cacheVersion:
+        type: string
+        default: "v1"
     steps:
       - save_cache:
           paths:
             - node_modules
-          key: deps-v1-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ arch }}-{{ checksum "yarn.lock" }}
+          key: deps-<< parameters.cacheVersion >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ arch }}-{{ checksum "yarn.lock" }}
 
   release:
     steps:
