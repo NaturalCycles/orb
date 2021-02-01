@@ -285,6 +285,23 @@ jobs:
           steps:
             - tools/slack_on_failure:
                 channel: << parameters.slack-channel >>
+
+  soup-job:
+    docker:
+      - image: naturalcycles/ci-node-libreoffice:latest
+    steps:
+      - tools/setup_node
+      - attach-ws
+      - run:
+          name: Generate dependency tree
+          command: npx license-checker > /tmp/dependency-tree.txt
+      - run:
+          name: PDF
+          command: |
+            mkdir -p /tmp/workspace/final-release-docs/
+            soffice --convert-to pdf /tmp/${SOUP_DOC_NAME}.txt --outdir /tmp/workspace/final-release-docs/
+      - persist-release-docs-ws
+
 commands:
   attach-ws:
     steps:
