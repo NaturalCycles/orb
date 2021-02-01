@@ -294,12 +294,12 @@ jobs:
       - attach-ws
       - run:
           name: Generate dependency tree
-          command: npx license-checker > /tmp/dependency-tree.txt
+          command: npx license-checker > "/tmp/${SOUP_DOC_NAME}.txt"
       - run:
           name: PDF
           command: |
             mkdir -p /tmp/workspace/final-release-docs/
-            soffice --convert-to pdf /tmp/${SOUP_DOC_NAME}.txt --outdir /tmp/workspace/final-release-docs/
+            soffice --convert-to pdf "/tmp/${SOUP_DOC_NAME}.txt" --outdir /tmp/workspace/final-release-docs/
       - persist-release-docs-ws
 
 commands:
