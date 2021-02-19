@@ -242,6 +242,50 @@ jobs:
                 channel: << parameters.slack-channel >>
 
   #
+  # Assumes you are uploading to a teamdrive whose id is specified as environment variable:
+  #
+  # Requires environment variables:
+  # RELEASE_DOCS_TEAMDRIVE_ID - optional team drive ID in which the target folder exists
+  # GOOGLE_SERVICE_ACCOUNT - service account with write access to the specified folder.
+  #
+
+  upload-files-to-teamdrive:
+    parameters:
+      slack-notify-failure:
+        type: boolean
+        default: false
+      slack-channel:
+        type: string
+        default: "#ci-alerts"
+      folder-id:
+        type: string
+      files:
+        type: string
+    executor: artifacts
+    steps:
+      - attach-ws
+      - load-state-env
+      - run:
+          name: Upload release docs to gdrive
+          command: |
+            # Get google key from env var
+            mkdir /home/circleci/.gdrive;
+            echo $GOOGLE_SERVICE_ACCOUNT > /tmp/gcp-key.json
+
+            # upload pdf files
+            upload-to-teamdrive.py --service_account=/tmp/gcp-key.json\
+                                   --teamdrive_id=${RELEASE_DOCS_TEAMDRIVE_ID}\
+                                   --target_folder_id=<< parameters.folder-id >>\
+                                   --files "<< parameters.files >>"\
+                                   --flatten \
+                                   --overwrite
+            rm -f /tmp/gcp-key.json
+      - when:
+          condition: << parameters.slack-notify-failure >>
+          steps:
+            - tools/slack_on_failure:
+                channel: << parameters.slack-channel >>
+  #
   # Opinionated folder structure: Puts docs in: <specified folder>/${CIRCLE_PROJECT_REPONAME}/${VERSION}
   #
   # Requires environment variables:
