@@ -278,7 +278,7 @@ jobs:
                                    --target_folder_id=<< parameters.folder-id >>\
                                    --files "<< parameters.files >>"\
                                    --flatten \
-                                   --overwrite
+                                   --failfast
             rm -f /tmp/gcp-key.json
       - when:
           condition: << parameters.slack-notify-failure >>
