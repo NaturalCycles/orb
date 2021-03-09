@@ -125,7 +125,10 @@ jobs:
       - run:
           name: Document risk from code areas in PR body
           command: |
-            if [ "${CIRCLE_BRANCH}" == "prod" ]; then
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward prod"
+              yarn --cwd /scripts/typescript/ tsn addRiskEvaluationToPR --srcBranch=${CIRCLE_BRANCH} --targetBranch=prod --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
+            elif [ "${CIRCLE_BRANCH}" == "prod" ]; then
               echo "The branch is ${CIRCLE_BRANCH}, skip"
             else
               echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward master"
