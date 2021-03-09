@@ -117,6 +117,21 @@ jobs:
             - tools/slack_on_failure:
                 channel: << parameters.slack-channel >>
 
+  evaluate-risks-from-scope:
+    executor: artifacts
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Document risk from code areas in PR body
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "prod" ]; then
+              echo "The branch is ${CIRCLE_BRANCH}, skip"
+            else
+              echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward master"
+              yarn --cwd /scripts/typescript/ tsn addRiskEvaluationToPR --srcBranch=${CIRCLE_BRANCH} --targetBranch=master --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
+            fi
+
 
   #
   # Fetches artifacts from circleci github checks for the PR this commit represents.
