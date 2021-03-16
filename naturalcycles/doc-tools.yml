@@ -118,6 +118,13 @@ jobs:
                 channel: << parameters.slack-channel >>
 
   evaluate-risks-from-scope:
+    parameters:
+      slack-notify-failure:
+        type: boolean
+        default: false
+      slack-channel:
+        type: string
+        default: "#ci-alerts"
     executor: artifacts
     working_directory: ~/repo
     steps:
@@ -136,6 +143,11 @@ jobs:
             fi
 
 
+      - when:
+          condition: << parameters.slack-notify-failure >>
+          steps:
+            - tools/slack_on_failure:
+                channel: << parameters.slack-channel >>
   #
   # Fetches artifacts from circleci github checks for the PR this commit represents.
   # Any amount of test reports is supported. Each should have a folder saved in job artifacts: junit-results/<test-xyz>
