@@ -148,6 +148,7 @@ jobs:
           steps:
             - tools/slack_on_failure:
                 channel: << parameters.slack-channel >>
+                branch: "master"
   #
   # Fetches artifacts from circleci github checks for the PR this commit represents.
   # Any amount of test reports is supported. Each should have a folder saved in job artifacts: junit-results/<test-xyz>
