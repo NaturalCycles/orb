@@ -295,7 +295,7 @@ commands:
           when: on_fail
           command: |
             [ -z "${SLACK_WEBHOOK_URL}" ] && echo "env.SLACK_WEBHOOK_URL is required!" && exit 1
-            [[ "<< parameters.branch >>" != "*" ]] && echo "Skipping notification for this branch" && exit 0
+            [[ "<< parameters.branch >>" != "*" && "<< parameters.branch >>" != "${CIRCLE_BRANCH}"  ]] && echo "Skipping notification for this branch" && exit 0
             curl -X POST -H "Content-Type: application/json" -d "{\"channel\": \"<< parameters.channel >>\", \"text\": \"\`${CIRCLE_PROJECT_REPONAME}/${CIRCLE_BRANCH}/${CIRCLE_JOB}\` <${CIRCLE_BUILD_URL}|failed>\", \"username\": \"<< parameters.username >>\", \"icon_emoji\": \"<< parameters.icon_emoji >>\"}" ${SLACK_WEBHOOK_URL}
 
   slack_on_success:
