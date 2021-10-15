@@ -362,6 +362,13 @@ jobs:
                 channel: << parameters.slack-channel >>
 
   soup-job:
+    parameters:
+      slack-notify-failure:
+        type: boolean
+        default: false
+      slack-channel:
+        type: string
+        default: "#ci-alerts"
     docker:
       - image: naturalcycles/ci-node-libreoffice:latest
     steps:
@@ -376,6 +383,11 @@ jobs:
             mkdir -p /tmp/workspace/final-release-docs/
             soffice --convert-to pdf "/tmp/${SOUP_DOC_NAME}.txt" --outdir /tmp/workspace/final-release-docs/
       - persist-release-docs-ws
+      - when:
+          condition: << parameters.slack-notify-failure >>
+          steps:
+            - tools/slack_on_failure:
+                channel: << parameters.slack-channel >>
 
 commands:
   attach-ws:
