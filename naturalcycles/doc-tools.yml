@@ -211,9 +211,7 @@ jobs:
       - checkout
       - run:
           name: Link Jira tickets to PR
-          shell: /bin/bash
-          command: |
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+          command: if [ "${CIRCLE_BRANCH}" == "master" ]; then
               echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward prod"
               yarn --cwd /scripts/typescript/ tsn linkJiraToPR.ts --srcBranch=${CIRCLE_BRANCH} --targetBranch=prod --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
             elif [ "${CIRCLE_BRANCH}" == "prod" ]; then
@@ -221,7 +219,7 @@ jobs:
             else
               echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward master"
               yarn --cwd /scripts/typescript/ tsn linkJiraToPR.ts --srcBranch=${CIRCLE_BRANCH} --targetBranch=master --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
-            fi
+            fi || true
 
     #
     # Publish jsons to pubsub topic
