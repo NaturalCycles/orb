@@ -220,7 +220,7 @@ jobs:
             else
               echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward master"
               yarn --cwd /scripts/typescript/ tsn linkJiraToPR.ts --srcBranch=${CIRCLE_BRANCH} --targetBranch=master --repo=$CIRCLE_PROJECT_REPONAME --dir=/home/circleci/repo
-            fi
+            fi || true
 
     #
     # Publish jsons to pubsub topic
