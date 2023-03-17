@@ -211,6 +211,7 @@ jobs:
       - checkout
       - run:
           name: Link Jira tickets to PR
+          shell: /bin/bash
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
               echo "The branch is ${CIRCLE_BRANCH}, verifying PR toward prod"
